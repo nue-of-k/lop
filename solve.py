@@ -3,6 +3,7 @@ import sys
 import argparse
 import re
 import pulp
+from enum import Enum, auto
 
 
 
@@ -18,6 +19,13 @@ DEFAULT_LOGFILE = 'pulp.log'	# 整数計画問題ソルバのログの出力先�
 sys.stdin  = io.TextIOWrapper(sys.stdin .buffer, encoding='utf-8')
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', line_buffering=True, write_through=True)
 sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', line_buffering=True, write_through=True)
+
+
+
+### 枝の通過方向を表す列挙型
+class Direction(Enum):
+	DIRECTION_1_TO_2 = auto()
+	DIRECTION_2_TO_1 = auto()
 
 
 
@@ -39,13 +47,14 @@ class Edge:
 		self.__distance = distance
 		self.__weighted = weighted
 		self.__riding = riding
+		self.__direction = Direction.DIRECTION_1_TO_2
 
-	# 始点駅
+	# 駅1
 	@property
 	def station1(self):
 		return self.__station1
 
-	# 終点駅
+	# 駅2
 	@property
 	def station2(self):
 		return self.__station2
@@ -62,19 +71,54 @@ class Edge:
 		else:
 			raise ValueError(__using_weighted_distance)
 
-	# 出力用TSV (順方向)
+	# 通過方向の設定
+	def __set_direction(self, value):
+		self.__direction = value
+	direction = property(fset=__set_direction)
+
+	# 通過方向の変更
+	def reverse(self):
+		if self.__direction == Direction.DIRECTION_1_TO_2:
+			self.__direction = Direction.DIRECTION_2_TO_1
+		else:
+			self.__direction = Direction.DIRECTION_1_TO_2
+		return self
+
+	# 経路の始点側の駅
+	@property
+	def station_s(self):
+		if self.__direction == Direction.DIRECTION_1_TO_2:
+			return self.__station1
+		else:
+			return self.__station2
+
+	# 経路の終点側の駅
+	@property
+	def station_e(self):
+		if self.__direction == Direction.DIRECTION_1_TO_2:
+			return self.__station2
+		else:
+			return self.__station1
+
+	# 出力用TSV
 	@property
 	def tsv(self):
-		return '\t'.join([self.__company, self.__line, self.__station1, self.__station2, str(self.__distance), str(self.__weighted), str(self.__riding)])
-
-	# 出力用TSV (逆方向)
-	@property
-	def tsv_rev(self):
-		return '\t'.join([self.__company, self.__line, self.__station2, self.__station1, str(self.__distance), str(self.__weighted), str(self.__riding)])
+		return '\t'.join([self.__company, self.__line, self.station_s, self.station_e, str(self.__distance), str(self.__weighted), str(self.__riding)])
 
 	# 計算に用いる粁程の変更
 	def using_weighted_distance(value):
 		Edge.__using_weighted_distance = value
+
+
+# 経路(枝のリスト)を逆順にする
+def reverse_path(path):
+	return list(map(lambda edge: edge.reverse(), path[::-1]))
+
+
+# 経路(枝のリスト)の出力
+def print_path(path, file=sys.stdout):
+	for edge in path:
+		print(edge.tsv, file=file)
 
 
 
@@ -289,14 +333,16 @@ while True:
 	if ys:
 		id = ys[0]
 		ys.remove(id)
+		edges[id].direction = Direction.DIRECTION_1_TO_2
 		print(edges[id].tsv, file=sys.stderr)
-		major_path.append(edges[id].tsv)
+		major_path.append(edges[id])
 		station = edges[id].station2
 	elif zs:
 		id = zs[0]
 		zs.remove(id)
-		print(edges[id].tsv_rev, file=sys.stderr)
-		major_path.append(edges[id].tsv_rev)
+		edges[id].direction = Direction.DIRECTION_2_TO_1
+		print(edges[id].tsv, file=sys.stderr)
+		major_path.append(edges[id])
 		station = edges[id].station1
 	else:
 		raise ValueError('主経路の始点が見つかりません')
@@ -307,8 +353,9 @@ while True:
 		if candidates:
 			id = candidates[0]
 			xs.remove(id)
+			edges[id].direction = Direction.DIRECTION_1_TO_2
 			print(edges[id].tsv, file=sys.stderr)
-			major_path.append(edges[id].tsv)
+			major_path.append(edges[id])
 			station = edges[id].station2
 			continue
 
@@ -316,8 +363,9 @@ while True:
 		if candidates:
 			id = candidates[0]
 			xs.remove(id)
-			print(edges[id].tsv_rev, file=sys.stderr)
-			major_path.append(edges[id].tsv_rev)
+			edges[id].direction = Direction.DIRECTION_2_TO_1
+			print(edges[id].tsv, file=sys.stderr)
+			major_path.append(edges[id])
 			station = edges[id].station1
 			continue
 
@@ -325,8 +373,9 @@ while True:
 		if candidates:
 			id = candidates[0]
 			zs.remove(id)
+			edges[id].direction = Direction.DIRECTION_1_TO_2
 			print(edges[id].tsv, file=sys.stderr)
-			major_path.append(edges[id].tsv)
+			major_path.append(edges[id])
 			station = edges[id].station2
 			break
 
@@ -334,8 +383,9 @@ while True:
 		if candidates:
 			id = candidates[0]
 			ys.remove(id)
-			print(edges[id].tsv_rev, file=sys.stderr)
-			major_path.append(edges[id].tsv_rev)
+			edges[id].direction = Direction.DIRECTION_2_TO_1
+			print(edges[id].tsv, file=sys.stderr)
+			major_path.append(edges[id])
 			station = edges[id].station1
 			break
 
@@ -357,6 +407,7 @@ while True:
 		if candidates:
 			id = candidates[0]
 			xs.remove(id)
+			edges[id].direction = Direction.DIRECTION_1_TO_2
 			print(edges[id].tsv, file=sys.stderr)
 			station = edges[id].station2
 			expr += 1 - x[id]
@@ -366,7 +417,8 @@ while True:
 		if candidates:
 			id = candidates[0]
 			xs.remove(id)
-			print(edges[id].tsv_rev, file=sys.stderr)
+			edges[id].direction = Direction.DIRECTION_2_TO_1
+			print(edges[id].tsv, file=sys.stderr)
 			station = edges[id].station1
 			expr += 1 - x[id]
 			continue
@@ -391,8 +443,91 @@ if not major_path:
 
 
 
-### 結果の出力
-for line in major_path:
-	print(line)
+### 結果の正規化と出力 (任意性のある部分は駅名の辞書順で最も若いものを出力する)
+
+loop1 = [ id for id in range(len(major_path)) if major_path[id].station_s == major_path[ 0].station_s and id > 0 ]
+loop2 = [ id for id in range(len(major_path)) if major_path[id].station_s == major_path[-1].station_e ]
+
+# Type L
+if not loop1 and not loop2:
+	if major_path[0].station_s > major_path[-1].station_e:
+		major_path = reverse_path(major_path)
+	print_path(major_path)
+
+# Type O
+elif loop2 == [0]:
+	stations = list(map(lambda edge: edge.station_s, major_path))
+	id = stations.index(min(stations))
+	major_path = major_path[id:] + major_path[:id]
+	if major_path[0].station_e > major_path[-1].station_s:
+		major_path = reverse_path(major_path)
+	print_path(major_path)
+
+# Type P (順方向)
+elif not loop1:
+	id = loop2[0]
+	path1 = major_path[:id]	# 放射部
+	path2 = major_path[id:]	# 環状部
+	if path2[0].station_e > path2[-1].station_s:
+		path2 = reverse_path(path2)
+	print_path(path1 + path2)
+
+# Type P (逆方向)
+elif not loop2:
+	id = loop1[0]
+	path1 = major_path[id:]	# 放射部
+	path2 = major_path[:id]	# 環状部
+	if path2[0].station_e > path2[-1].station_s:
+		path2 = reverse_path(path2)
+	print_path(reverse_path(path1) + path2)
+
+# Type B (８)
+elif len(loop2) > 1:
+	id = loop1[0]
+	path1 = major_path[:id]	# 環状部1
+	path2 = major_path[id:]	# 環状部2
+	if path1[0].station_e > path1[-1].station_s:
+		path1 = reverse_path(path1)
+	if path2[0].station_e > path2[-1].station_s:
+		path2 = reverse_path(path2)
+	if path1[0].station_e < path2[0].station_e:
+		print_path(path1 + path2)
+	else:
+		print_path(path2 + path1)
+
+# Type B (呂)
+elif loop1[0] < loop2[0]:
+	id1 = loop1[0]
+	id2 = loop2[0]
+	path1 = major_path[:id1]	# 環状部1
+	path2 = major_path[id1:id2]	# 接続部
+	path3 = major_path[id2:]	# 環状部2
+	if path1[0].station_e > path1[-1].station_s:
+		path1 = reverse_path(path1)
+	if path3[0].station_e > path3[-1].station_s:
+		path3 = reverse_path(path3)
+	if path1[0].station_s < path3[0].station_s:
+		print_path(path1 + path2 + path3)
+	else:
+		print_path(path3 + reverse_path(path2) + path1)
+
+# Type B (日)
+else:
+	id1 = loop1[0]
+	id2 = loop2[0]
+	path1 = major_path[:id2]
+	path2 = reverse_path(major_path[id2:id1])
+	path3 = major_path[id1:]
+	if path1[0].station_s > path1[-1].station_e:
+		path1 = reverse_path(path1)
+		path2 = reverse_path(path2)
+		path3 = reverse_path(path3)
+	if path1[0].station_e > path2[0].station_e:
+		path1, path2 = path2, path1
+	if path1[0].station_e > path3[0].station_e:
+		path1, path3 = path3, path1
+	if path2[-1].station_s > path3[-1].station_s:
+		path2, path3 = path3, path2
+	print_path(path1 + reverse_path(path2) + path3)
 
 
