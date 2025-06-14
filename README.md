@@ -27,10 +27,10 @@
 	* フリーの整数計画問題ソルバとしては動作が高速な [SCIP](https://www.scipopt.org/) がオススメです。
 
 以下の環境で動作確認済です。
-* Windows 10 Pro (64bit) + Python 3.12.2 + PuLP 2.8.0 + CBC MILP Solver 2.10.11
-* Windows 10 Pro (64bit) + Python 3.12.2 + PuLP 2.8.0 + SCIP 8.1.0
-* Ubuntu 22.04 LTS (64bit) + Python 3.10.12 + PuLP 2.7.0 + CBC MILP Solver 2.10.7
-* Ubuntu 22.04 LTS (64bit) + Python 3.10.12 + PuLP 2.7.0 + SCIP 8.0.3
+* Windows 11 Pro 24H2 (64bit) + Python 3.12.2 + PuLP 3.2.1 + CBC MILP Solver 2.10.12
+* Windows 11 Pro 24H2 (64bit) + Python 3.12.2 + PuLP 3.2.1 + SCIP 9.2.2
+* Ubuntu 24.04.2 LTS (64bit) + Python 3.12.3 + PuLP 3.2.1 + CBC MILP Solver 2.10.11
+* Ubuntu 24.04.2 LTS (64bit) + Python 3.12.3 + PuLP 3.2.1 + SCIP 9.2.2
 
 
 ## 実行
@@ -121,7 +121,7 @@ solver = pulp.PULP_CBC_CMD(msg=False, threads=args.threads, gapRel=0, gapAbs=0, 
 
 これは以下の不等式制約に対応します。（不等式や変数については[最長片道切符問題の定式化](https://nue2004.info/railway/lop/modeling.htm)を参照）
 ```math
-\sum_{\substack{\text{edge $i$ with}\\\text{\texttt{+}\textit{group}}}} \bar{x}_i + \sum_{\substack{\text{edge $i$ with}\\\text{\texttt{-}\textit{group}}}} (1 - \bar{x}_i) \ge 1
+\sum_{\substack{\text{edge }i\text{ with}\\\texttt{+}{group}}} \bar{x}_i + \sum_{\substack{\text{edge }i\text{ with}\\\texttt{-}{group}}} (1 - \bar{x}_i) \ge 1
 ```
 
 #### 排他制約
@@ -132,7 +132,7 @@ solver = pulp.PULP_CBC_CMD(msg=False, threads=args.threads, gapRel=0, gapAbs=0, 
 
 これは以下の不等式制約に対応します。（但し $M$ は十分大きな定数; 不等式や変数については[最長片道切符問題の定式化](https://nue2004.info/railway/lop/modeling.htm)を参照）
 ```math
-\sum_{\substack{\text{edge $i$ with}\\\text{\texttt{*}\textit{group}}}} M \bar{x}_i + \sum_{\substack{\text{edge $i$ with}\\\text{\texttt{:}\textit{group}}}} \bar{x}_i \le M
+\sum_{\substack{\text{edge }i\text{ with}\\\texttt{*}{group}}} M \bar{x}_i + \sum_{\substack{\text{edge }i\text{ with}\\\texttt{:}{group}}} \bar{x}_i \le M
 ```
 
 
