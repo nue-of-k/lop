@@ -99,6 +99,7 @@ solver = pulp.PULP_CBC_CMD(msg=False, threads=args.threads, gapRel=0, gapAbs=0, 
 
 
 # 枝リストの読込
+line_number = 0	# 行番号
 edges = []	# 枝のリスト
 vertices = {}	# 駅名から枝番号への連想配列
 disj_groups = {}	# 選言制約
@@ -106,6 +107,8 @@ excl_groups = {}	# 排他制約
 re_comment = re.compile(r'#.*$')	# コメントにマッチする正規表現
 re_empty = re.compile(r'^\s*$')	# 空行にマッチする正規表現
 for line in sys.stdin:
+	line_number += 1
+
 	# コメントの除去
 	line = re_comment.sub('', line)
 
@@ -127,6 +130,11 @@ for line in sys.stdin:
 		int(parse[6]),
 	)
 	edges.append(edge)
+
+	# 自己閉路はエラー
+	if parse[2] == parse[3]:
+		print('Error: line {0}: 自己閉路があります'.format(line_number), file=sys.stderr)
+		sys.exit(1)
 
 	# 駅1に枝を追加
 	if parse[2] in vertices:
