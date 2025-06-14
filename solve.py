@@ -267,15 +267,16 @@ while True:
 
 	# 最長路が見つからなかった場合は終了
 	if status != 1:
-		print('最長路が見つかりませんでした', file=sys.stderr)
-		sys.exit(0)
+		optimal = -float('inf')
+		break
 
 	# 試行結果のダンプ
 	count += 1
+	optimal = round(pulp.value(problem.objective))
 	print('', file=sys.stderr)
 	print('----- 試行 {0} 回目 -----'.format(count), file=sys.stderr)
 	print('判定: {0}'.format(pulp.LpStatus[status]), file=sys.stderr)
-	print('総延長: {0}'.format(pulp.value(problem.objective)), file=sys.stderr)
+	print('総延長: {0}'.format(optimal), file=sys.stderr)
 
 	# 経路に含まれる枝
 	xs = [ id for id in range(len(edges)) if x[id].value() >= 0.99 ]
@@ -375,7 +376,22 @@ while True:
 
 	problem += expr >= 1
 
-# 結果の出力
+
+
+### 最長路が唯1本の枝のみからなるケース
+
+for edge in edges:
+	if edge.distance > optimal:
+		major_path = [edge]
+		optimal = edge.distance
+
+if not major_path:
+	print('最長路が見つかりませんでした', file=sys.stderr)
+	sys.exit(1)
+
+
+
+### 結果の出力
 for line in major_path:
 	print(line)
 
